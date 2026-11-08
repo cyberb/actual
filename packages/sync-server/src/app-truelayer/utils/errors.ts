@@ -56,6 +56,14 @@ export function handleTrueLayerError(
     );
   }
 
+  if (statusCode === 501 || errorName === 'endpoint_not_supported') {
+    return new TrueLayerError(
+      'INVALID_INPUT',
+      'ENDPOINT_NOT_SUPPORTED',
+      message,
+    );
+  }
+
   if (statusCode === 404) {
     return new TrueLayerError('INVALID_INPUT', 'NOT_FOUND', message);
   }

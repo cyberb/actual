@@ -414,6 +414,77 @@ describe('trueLayerService', () => {
       }
     });
 
+    it('treats pending transactions as empty when the provider does not support them', async () => {
+      store.set(
+        'truelayer_connection:conn-1',
+        JSON.stringify({
+          accessToken: 'access',
+          refreshToken: 'refresh',
+          expiresAt: Date.now() + 3_600_000,
+        }),
+      );
+      store.set(
+        'truelayer_account:acc-1',
+        JSON.stringify({ connectionId: 'conn-1', kind: 'accounts' }),
+      );
+      mockFetch.mockImplementation(async (url: string) =>
+        url.endsWith('/transactions/pending')
+          ? {
+              ok: false,
+              status: 501,
+              json: () =>
+                Promise.resolve({
+                  error: 'endpoint_not_supported',
+                  error_description: 'Feature not supported by the provider',
+                }),
+            }
+          : {
+              ok: true,
+              status: 200,
+              json: () => Promise.resolve({ results: [] }),
+            },
+      );
+
+      const result = await trueLayerService.getTransactions(
+        'acc-1',
+        '2026-01-01',
+      );
+
+      expect(result.pending).toEqual([]);
+    });
+
+    it('fails when pending transactions cannot be fetched', async () => {
+      store.set(
+        'truelayer_connection:conn-1',
+        JSON.stringify({
+          accessToken: 'access',
+          refreshToken: 'refresh',
+          expiresAt: Date.now() + 3_600_000,
+        }),
+      );
+      store.set(
+        'truelayer_account:acc-1',
+        JSON.stringify({ connectionId: 'conn-1', kind: 'accounts' }),
+      );
+      mockFetch.mockImplementation(async (url: string) =>
+        url.endsWith('/transactions/pending')
+          ? {
+              ok: false,
+              status: 429,
+              json: () => Promise.resolve({ error: 'too_many_requests' }),
+            }
+          : {
+              ok: true,
+              status: 200,
+              json: () => Promise.resolve({ results: [] }),
+            },
+      );
+
+      await expect(
+        trueLayerService.getTransactions('acc-1', '2026-01-01'),
+      ).rejects.toMatchObject({ error_code: 'RATE_LIMIT_EXCEEDED' });
+    });
+
     it('asks for re-authorisation when the refresh token is rejected', async () => {
       store.set(
         'truelayer_connection:conn-1',

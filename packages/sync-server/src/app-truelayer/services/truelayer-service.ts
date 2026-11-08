@@ -129,13 +129,13 @@ async function getOptionalData<T>(
   } catch (error) {
     if (
       error instanceof TrueLayerError &&
-      error.error_code === 'ITEM_LOGIN_REQUIRED'
+      error.error_code === 'ENDPOINT_NOT_SUPPORTED'
     ) {
-      throw error;
+      debug('Endpoint not supported by the provider');
+      debugSensitive('Endpoint %s not supported by the provider', path);
+      return [];
     }
-    debug('Optional data request failed');
-    debugSensitive('Optional data request %s failed: %O', path, error);
-    return [];
+    throw error;
   }
 }
 
