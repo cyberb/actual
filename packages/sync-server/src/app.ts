@@ -33,7 +33,10 @@ process.on('unhandledRejection', reason => {
 
 app.disable('x-powered-by');
 app.use(cors());
-app.set('trust proxy', config.get('trustedProxies'));
+app.set(
+  'trust proxy',
+  config.get('socket') ? 1 : config.get('trustedProxies'),
+);
 if (process.env.NODE_ENV !== 'development') {
   app.use(
     rateLimit({
