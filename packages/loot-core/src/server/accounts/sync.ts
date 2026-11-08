@@ -397,6 +397,41 @@ async function downloadEnableBankingTransactions(
   };
 }
 
+async function downloadTrueLayerTransactions(acctId: string, since: string) {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return;
+
+  logger.log('Pulling transactions from TrueLayer');
+
+  const res = await post(
+    getServer().TRUELAYER_SERVER + '/transactions',
+    {
+      accountId: acctId,
+      startDate: since,
+    },
+    {
+      'X-ACTUAL-TOKEN': userToken,
+    },
+    60000,
+  );
+
+  if (res.error_code) {
+    throw BankSyncError(res.error_type, res.error_code);
+  }
+
+  const {
+    transactions: { all },
+    balances,
+    startingBalance,
+  } = res;
+
+  return {
+    transactions: all,
+    accountBalance: balances,
+    startingBalance,
+  };
+}
+
 async function resolvePayee(trans, payeeName, payeesToCreate) {
   if (trans.payee == null && payeeName) {
     // First check our registry of new payees (to avoid a db access)
@@ -1155,7 +1190,10 @@ async function processBankSyncDownload(
         currentBalance,
       );
       balanceToUse = Math.round(previousBalance);
-    } else if (acctRow.account_sync_source === 'enableBanking') {
+    } else if (
+      acctRow.account_sync_source === 'enableBanking' ||
+      acctRow.account_sync_source === 'trueLayer'
+    ) {
       const importPending = await aqlQuery(
         q('preferences')
           .filter({ id: `sync-import-pending-${id}` })
@@ -1280,6 +1318,8 @@ export async function syncAccount(
       syncStartDate,
       newAccount,
     );
+  } else if (acctRow.account_sync_source === 'trueLayer') {
+    download = await downloadTrueLayerTransactions(acctId, syncStartDate);
   } else if (acctRow.account_sync_source === 'enableBanking') {
     const bankRow = await db.select('banks', acctRow.bank);
     download = await downloadEnableBankingTransactions(
