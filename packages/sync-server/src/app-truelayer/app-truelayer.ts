@@ -19,6 +19,7 @@ import {
   isImportableTransaction,
   normalizeBalance,
   normalizeTransaction,
+  startingBalanceInCents,
   trueLayerService,
 } from './services/truelayer-service';
 import { TrueLayerError } from './utils/errors';
@@ -396,7 +397,12 @@ app.post(
             pending: pendingNormalized,
           },
           balances,
-          startingBalance: balances[0]?.balanceAmount.amount ?? 0,
+          startingBalance: startingBalanceInCents(
+            booked,
+            pendingNormalized,
+            balance,
+            kind,
+          ),
         },
       });
     } catch (error) {

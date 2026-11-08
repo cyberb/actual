@@ -4,6 +4,7 @@ import {
   balanceInCents,
   isImportableTransaction,
   normalizeTransaction,
+  startingBalanceInCents,
   trueLayerService,
 } from '#app-truelayer/services/truelayer-service';
 import { TrueLayerError } from '#app-truelayer/utils/errors';
@@ -156,6 +157,80 @@ describe('trueLayerService', () => {
       expect(balanceInCents({ currency: 'GBP', current: 50 }, 'cards')).toBe(
         -5000,
       );
+    });
+  });
+
+  describe('#startingBalanceInCents', () => {
+    const posted = [
+      {
+        transaction_id: 'b-2',
+        timestamp: '2026-11-06T00:00:00Z',
+        amount: -8.3,
+        currency: 'GBP',
+        running_balance: { amount: 12341.77, currency: 'GBP' },
+      },
+      {
+        transaction_id: 'b-1',
+        timestamp: '2026-11-04T00:00:00Z',
+        amount: -10.3,
+        currency: 'GBP',
+        running_balance: { amount: 12350.07, currency: 'GBP' },
+      },
+    ];
+
+    it('ignores card payments the bank has deducted but not listed', () => {
+      expect(
+        startingBalanceInCents(
+          posted,
+          [],
+          { currency: 'GBP', current: 12120.58 },
+          'accounts',
+        ),
+      ).toBe(1234177);
+    });
+
+    it('includes the pending transactions that are imported', () => {
+      const pending = normalizeTransaction(
+        {
+          transaction_id: 'p-1',
+          timestamp: '2026-11-08T00:00:00Z',
+          amount: -35.09,
+          currency: 'GBP',
+          transaction_type: 'DEBIT',
+        },
+        false,
+      );
+
+      expect(
+        startingBalanceInCents(
+          posted,
+          [pending],
+          { currency: 'GBP', current: 12085.49 },
+          'accounts',
+        ),
+      ).toBe(1230668);
+    });
+
+    it('falls back to the current balance without a running balance', () => {
+      expect(
+        startingBalanceInCents(
+          [{ ...posted[0], running_balance: undefined }],
+          [],
+          { currency: 'GBP', current: 12120.58 },
+          'accounts',
+        ),
+      ).toBe(1212058);
+    });
+
+    it('reports amounts owed on cards as negative', () => {
+      expect(
+        startingBalanceInCents(
+          [{ ...posted[0], running_balance: { amount: 50, currency: 'GBP' } }],
+          [],
+          { currency: 'GBP', current: 80 },
+          'cards',
+        ),
+      ).toBe(-5000);
     });
   });
 

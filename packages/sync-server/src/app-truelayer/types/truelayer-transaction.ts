@@ -1,3 +1,4 @@
+import type { TrueLayerRunningBalance } from './truelayer-running-balance';
 import type { TrueLayerTransactionMeta } from './truelayer-transaction-meta';
 
 export type TrueLayerTransaction = {
@@ -9,4 +10,5 @@ export type TrueLayerTransaction = {
   transaction_type?: string;
   merchant_name?: string;
   meta?: TrueLayerTransactionMeta;
+  running_balance?: TrueLayerRunningBalance;
 };

@@ -235,6 +235,30 @@ export function balanceInCents(
   return kind === 'cards' ? -cents : cents;
 }
 
+export function startingBalanceInCents(
+  booked: TrueLayerTransaction[],
+  pending: BankSyncTransaction[],
+  balance: TrueLayerBalance | undefined,
+  kind: TrueLayerAccountKind,
+): number {
+  const newest = booked.reduce<TrueLayerTransaction | undefined>(
+    (latest, tx) =>
+      tx.running_balance && (!latest || tx.timestamp > latest.timestamp)
+        ? tx
+        : latest,
+    undefined,
+  );
+  if (!newest?.running_balance) {
+    return balanceInCents(balance, kind);
+  }
+  const posted = toCents(newest.running_balance.amount);
+  const pendingTotal = pending.reduce(
+    (total, tx) => total + toCents(Number(tx.transactionAmount.amount)),
+    0,
+  );
+  return (kind === 'cards' ? -posted : posted) + pendingTotal;
+}
+
 export function normalizeBalance(
   balance: TrueLayerBalance,
   kind: TrueLayerAccountKind,
