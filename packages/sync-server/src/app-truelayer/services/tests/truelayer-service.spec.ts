@@ -286,6 +286,59 @@ describe('trueLayerService', () => {
       ).toMatchObject({ accessToken: 'new', refreshToken: 'refresh-1' });
     });
 
+    it('sends the PSU IP on every data request when the user is present', async () => {
+      store.set(
+        'truelayer_connection:conn-1',
+        JSON.stringify({
+          accessToken: 'access',
+          refreshToken: 'refresh',
+          expiresAt: Date.now() + 3_600_000,
+        }),
+      );
+      store.set(
+        'truelayer_account:acc-1',
+        JSON.stringify({ connectionId: 'conn-1', kind: 'accounts' }),
+      );
+      mockFetch.mockImplementation(async () => ({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ results: [] }),
+      }));
+
+      await trueLayerService.getTransactions('acc-1', '2026-01-01', '8.8.8.8');
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      for (const [, options] of mockFetch.mock.calls) {
+        expect(options.headers['X-PSU-IP']).toBe('8.8.8.8');
+      }
+    });
+
+    it('omits the PSU IP when it is not known', async () => {
+      store.set(
+        'truelayer_connection:conn-1',
+        JSON.stringify({
+          accessToken: 'access',
+          refreshToken: 'refresh',
+          expiresAt: Date.now() + 3_600_000,
+        }),
+      );
+      store.set(
+        'truelayer_account:acc-1',
+        JSON.stringify({ connectionId: 'conn-1', kind: 'accounts' }),
+      );
+      mockFetch.mockImplementation(async () => ({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ results: [] }),
+      }));
+
+      await trueLayerService.getTransactions('acc-1', '2026-01-01');
+
+      for (const [, options] of mockFetch.mock.calls) {
+        expect(options.headers).not.toHaveProperty('X-PSU-IP');
+      }
+    });
+
     it('asks for re-authorisation when the refresh token is rejected', async () => {
       store.set(
         'truelayer_connection:conn-1',

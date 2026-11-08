@@ -46,6 +46,7 @@ vi.mock('undici', () => ({ fetch: mockFetch }));
 const { handlers } = await import('../app-truelayer');
 
 const app = express();
+app.set('trust proxy', true);
 app.use('/truelayer', handlers);
 
 const REDIRECT = 'https://budget.example.com/truelayer/auth_callback';
@@ -221,6 +222,44 @@ describe('TrueLayer app', () => {
       booked: true,
     });
     expect(res.body.data.transactions.pending[0].booked).toBe(false);
+  });
+
+  it('passes a public client IP to TrueLayer and skips a private one', async () => {
+    store.set(
+      'truelayer_connection:conn-1',
+      JSON.stringify({
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        expiresAt: Date.now() + 3_600_000,
+      }),
+    );
+    store.set(
+      'truelayer_account:acc-1',
+      JSON.stringify({ connectionId: 'conn-1', kind: 'accounts' }),
+    );
+    mockFetch.mockImplementation(async () => respond({ results: [] }));
+
+    await request(app)
+      .post('/truelayer/transactions')
+      .set('X-Forwarded-For', '2a00:1450:4009:81f::200e')
+      .send({ accountId: 'acc-1', startDate: '2026-11-01' });
+    const publicHeaders = mockFetch.mock.calls.map(([, o]) => o.headers);
+    mockFetch.mockClear();
+
+    await request(app)
+      .post('/truelayer/transactions')
+      .set('X-Forwarded-For', '192.168.1.20')
+      .send({ accountId: 'acc-1', startDate: '2026-11-01' });
+    const privateHeaders = mockFetch.mock.calls.map(([, o]) => o.headers);
+
+    expect(publicHeaders).toHaveLength(3);
+    for (const headers of publicHeaders) {
+      expect(headers['X-PSU-IP']).toBe('2a00:1450:4009:81f::200e');
+    }
+    expect(privateHeaders).toHaveLength(3);
+    for (const headers of privateHeaders) {
+      expect(headers).not.toHaveProperty('X-PSU-IP');
+    }
   });
 
   it('asks for re-authorisation when the account is not linked', async () => {

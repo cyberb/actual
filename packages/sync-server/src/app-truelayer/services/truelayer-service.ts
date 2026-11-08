@@ -92,15 +92,23 @@ async function requestToken(
   return (await response.json()) as TrueLayerTokenResponse;
 }
 
-async function getData<T>(accessToken: string, path: string): Promise<T[]> {
+async function getData<T>(
+  accessToken: string,
+  path: string,
+  psuIp?: string,
+): Promise<T[]> {
   const url = `${API_URL}/data/v1${path}`;
   debug('GET data');
   debugSensitive('GET %s', url);
 
-  const response = await send(url, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+  if (psuIp) {
+    headers['X-PSU-IP'] = psuIp;
+  }
+
+  const response = await send(url, { method: 'GET', headers });
 
   if (!response.ok) {
     throw await readError(response);
@@ -114,9 +122,10 @@ async function getData<T>(accessToken: string, path: string): Promise<T[]> {
 async function getOptionalData<T>(
   accessToken: string,
   path: string,
+  psuIp?: string,
 ): Promise<T[]> {
   try {
-    return await getData<T>(accessToken, path);
+    return await getData<T>(accessToken, path, psuIp);
   } catch (error) {
     if (
       error instanceof TrueLayerError &&
@@ -343,11 +352,14 @@ export const trueLayerService = {
     return connectionId;
   },
 
-  async listAccounts(connectionId: string): Promise<LinkedAccount[]> {
+  async listAccounts(
+    connectionId: string,
+    psuIp?: string,
+  ): Promise<LinkedAccount[]> {
     const accessToken = await getAccessToken(connectionId);
     const [accounts, cards] = await Promise.all([
-      getData<TrueLayerAccount>(accessToken, '/accounts'),
-      getOptionalData<TrueLayerCard>(accessToken, '/cards'),
+      getData<TrueLayerAccount>(accessToken, '/accounts', psuIp),
+      getOptionalData<TrueLayerCard>(accessToken, '/cards', psuIp),
     ]);
 
     const linkedAccounts = await Promise.all(
@@ -355,6 +367,7 @@ export const trueLayerService = {
         const [balance] = await getOptionalData<TrueLayerBalance>(
           accessToken,
           `/accounts/${encodeURIComponent(account.account_id)}/balance`,
+          psuIp,
         );
         storeLink(account.account_id, connectionId, 'accounts');
         return {
@@ -372,6 +385,7 @@ export const trueLayerService = {
         const [balance] = await getOptionalData<TrueLayerBalance>(
           accessToken,
           `/cards/${encodeURIComponent(card.account_id)}/balance`,
+          psuIp,
         );
         storeLink(card.account_id, connectionId, 'cards');
         return {
@@ -391,7 +405,7 @@ export const trueLayerService = {
     return [...linkedAccounts, ...linkedCards];
   },
 
-  async getTransactions(accountId: string, startDate: string) {
+  async getTransactions(accountId: string, startDate: string, psuIp?: string) {
     const { connectionId, kind } = readLink(accountId);
     const accessToken = await getAccessToken(connectionId);
     const base = `/${kind}/${encodeURIComponent(accountId)}`;
@@ -404,12 +418,14 @@ export const trueLayerService = {
       getData<TrueLayerTransaction>(
         accessToken,
         `${base}/transactions?${range}`,
+        psuIp,
       ),
       getOptionalData<TrueLayerTransaction>(
         accessToken,
         `${base}/transactions/pending`,
+        psuIp,
       ),
-      getData<TrueLayerBalance>(accessToken, `${base}/balance`),
+      getData<TrueLayerBalance>(accessToken, `${base}/balance`, psuIp),
     ]);
 
     return { kind, booked, pending, balance: balances[0] };

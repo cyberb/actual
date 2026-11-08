@@ -13,6 +13,7 @@ import {
   requestLoggerMiddleware,
   validateSessionMiddleware,
 } from '#util/middlewares';
+import { isBlockedIp } from '#util/ssrf';
 
 import {
   isImportableTransaction,
@@ -61,6 +62,15 @@ function settleAuth(state: string, result: unknown, error?: unknown) {
     }
     cleanupPendingAuth(state);
   }
+}
+
+function psuIp(req: Request): string | undefined {
+  const ip = req.ip;
+  if (!ip || isBlockedIp(ip)) {
+    debug('Skipping PSU IP because it is local/private');
+    return undefined;
+  }
+  return ip;
 }
 
 function sendPage(res: Response, status: number, message: string) {
@@ -129,7 +139,10 @@ app.get('/auth_callback', async (req: Request, res: Response) => {
       code,
       redirectUrl,
     );
-    const accounts = await trueLayerService.listAccounts(connectionId);
+    const accounts = await trueLayerService.listAccounts(
+      connectionId,
+      psuIp(req),
+    );
     debug('Callback connection created with %d accounts', accounts.length);
     settleAuth(state, { accounts });
     sendPage(res, 200, 'Authorization successful. This window will close.');
@@ -364,7 +377,7 @@ app.post(
           : new Date(startDate).toISOString().split('T')[0];
 
       const { kind, booked, pending, balance } =
-        await trueLayerService.getTransactions(accountId, dateFrom);
+        await trueLayerService.getTransactions(accountId, dateFrom, psuIp(req));
 
       const bookedNormalized = importable(booked, true);
       const pendingNormalized = importable(pending, false);
