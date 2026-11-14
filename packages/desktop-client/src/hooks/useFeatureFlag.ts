@@ -16,6 +16,8 @@ const DEFAULT_FEATURE_FLAG_STATE: Record<FeatureFlag, boolean> = {
   sankeyReport: false,
   akahuBankSync: false,
   trueLayerBankSync: false,
+  stripeBankSync: false,
+  paypalBankSync: false,
   mobileCalculator: false,
   monteCarloReport: false,
 };

@@ -27,6 +27,8 @@ export const SYNC_PROVIDERS = [
   'enableBanking',
   'akahu',
   'trueLayer',
+  'stripe',
+  'paypal',
 ] as const;
 
 export type BankSyncProviders = (typeof SYNC_PROVIDERS)[number];

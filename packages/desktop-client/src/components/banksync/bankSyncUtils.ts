@@ -19,6 +19,8 @@ const SYNC_PROVIDER_KEYS = [
   'enableBanking',
   'akahu',
   'trueLayer',
+  'stripe',
+  'paypal',
   'unlinked',
 ] as const satisfies readonly SyncProviders[];
 
@@ -38,6 +40,8 @@ export function getSyncSourceReadable(
     enableBanking: 'Enable Banking',
     akahu: 'Akahu',
     trueLayer: 'TrueLayer',
+    stripe: 'Stripe',
+    paypal: 'PayPal',
     unlinked: translate('Unlinked'),
   };
 }

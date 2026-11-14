@@ -432,6 +432,45 @@ async function downloadTrueLayerTransactions(acctId: string, since: string) {
   };
 }
 
+async function downloadPaymentProviderTransactions(
+  server: 'STRIPE_SERVER' | 'PAYPAL_SERVER',
+  acctId: string,
+  since: string,
+) {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return;
+
+  logger.log(`Pulling transactions from ${server}`);
+
+  const res = await post(
+    getServer()[server] + '/transactions',
+    {
+      accountId: acctId,
+      startDate: since,
+    },
+    {
+      'X-ACTUAL-TOKEN': userToken,
+    },
+    120000,
+  );
+
+  if (res.error_code) {
+    throw BankSyncError(res.error_type, res.error_code);
+  }
+
+  const {
+    transactions: { all },
+    balances,
+    startingBalance,
+  } = res;
+
+  return {
+    transactions: all,
+    accountBalance: balances,
+    startingBalance,
+  };
+}
+
 async function resolvePayee(trans, payeeName, payeesToCreate) {
   if (trans.payee == null && payeeName) {
     // First check our registry of new payees (to avoid a db access)
@@ -1206,7 +1245,11 @@ async function processBankSyncDownload(
         return total - amountToInteger(trans.transactionAmount.amount);
       }, currentBalance);
       balanceToUse = previousBalance;
-    } else if (acctRow.account_sync_source === 'akahu') {
+    } else if (
+      acctRow.account_sync_source === 'akahu' ||
+      acctRow.account_sync_source === 'stripe' ||
+      acctRow.account_sync_source === 'paypal'
+    ) {
       const currentBalance = download.startingBalance;
       const previousBalance = transactions.reduce(
         (total, trans) =>
@@ -1320,6 +1363,18 @@ export async function syncAccount(
     );
   } else if (acctRow.account_sync_source === 'trueLayer') {
     download = await downloadTrueLayerTransactions(acctId, syncStartDate);
+  } else if (acctRow.account_sync_source === 'stripe') {
+    download = await downloadPaymentProviderTransactions(
+      'STRIPE_SERVER',
+      acctId,
+      syncStartDate,
+    );
+  } else if (acctRow.account_sync_source === 'paypal') {
+    download = await downloadPaymentProviderTransactions(
+      'PAYPAL_SERVER',
+      acctId,
+      syncStartDate,
+    );
   } else if (acctRow.account_sync_source === 'enableBanking') {
     const bankRow = await db.select('banks', acctRow.bank);
     download = await downloadEnableBankingTransactions(

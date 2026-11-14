@@ -9,8 +9,10 @@ import type {
   SyncServerAkahuAccount,
   SyncServerEnableBankingAccount,
   SyncServerGoCardlessAccount,
+  SyncServerPayPalAccount,
   SyncServerPluggyAiAccount,
   SyncServerSimpleFinAccount,
+  SyncServerStripeAccount,
   SyncServerTrueLayerAccount,
   TransactionEntity,
 } from '@actual-app/core/types/models';
@@ -625,6 +627,90 @@ export function useLinkAccountTrueLayerMutation() {
         dispatch,
         t(
           'There was an error linking the account to TrueLayer. Please try again.',
+        ),
+        error,
+      );
+    },
+  });
+}
+
+type LinkAccountStripePayload = LinkAccountBasePayload & {
+  externalAccount: SyncServerStripeAccount;
+};
+
+export function useLinkAccountStripeMutation() {
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({
+      externalAccount,
+      upgradingId,
+      offBudget,
+      startingDate,
+      startingBalance,
+    }: LinkAccountStripePayload) => {
+      await send('stripe-accounts-link', {
+        externalAccount,
+        upgradingId,
+        offBudget,
+        startingDate,
+        startingBalance,
+      });
+    },
+    onSuccess: () => {
+      invalidateQueries(queryClient);
+      invalidateQueries(queryClient, payeeQueries.lists());
+    },
+    onError: error => {
+      console.error('Error linking account to Stripe:', error);
+      dispatchErrorNotification(
+        dispatch,
+        t(
+          'There was an error linking the account to Stripe. Please try again.',
+        ),
+        error,
+      );
+    },
+  });
+}
+
+type LinkAccountPayPalPayload = LinkAccountBasePayload & {
+  externalAccount: SyncServerPayPalAccount;
+};
+
+export function useLinkAccountPayPalMutation() {
+  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async ({
+      externalAccount,
+      upgradingId,
+      offBudget,
+      startingDate,
+      startingBalance,
+    }: LinkAccountPayPalPayload) => {
+      await send('paypal-accounts-link', {
+        externalAccount,
+        upgradingId,
+        offBudget,
+        startingDate,
+        startingBalance,
+      });
+    },
+    onSuccess: () => {
+      invalidateQueries(queryClient);
+      invalidateQueries(queryClient, payeeQueries.lists());
+    },
+    onError: error => {
+      console.error('Error linking account to PayPal:', error);
+      dispatchErrorNotification(
+        dispatch,
+        t(
+          'There was an error linking the account to PayPal. Please try again.',
         ),
         error,
       );

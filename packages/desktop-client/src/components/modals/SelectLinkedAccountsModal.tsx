@@ -17,8 +17,10 @@ import type {
   SyncServerAkahuAccount,
   SyncServerEnableBankingAccount,
   SyncServerGoCardlessAccount,
+  SyncServerPayPalAccount,
   SyncServerPluggyAiAccount,
   SyncServerSimpleFinAccount,
+  SyncServerStripeAccount,
   SyncServerTrueLayerAccount,
 } from '@actual-app/core/types/models';
 import { format as formatDate, parseISO } from 'date-fns';
@@ -27,8 +29,10 @@ import {
   useLinkAccountAkahuMutation,
   useLinkAccountEnableBankingMutation,
   useLinkAccountMutation,
+  useLinkAccountPayPalMutation,
   useLinkAccountPluggyAiMutation,
   useLinkAccountSimpleFinMutation,
+  useLinkAccountStripeMutation,
   useLinkAccountTrueLayerMutation,
   useUnlinkAccountMutation,
 } from '#accounts';
@@ -200,6 +204,18 @@ export type SelectLinkedAccountsModalProps =
       externalAccounts: SyncServerTrueLayerAccount[];
       syncSource: 'trueLayer';
       upgradingAccountId?: string;
+    }
+  | {
+      requisitionId?: undefined;
+      externalAccounts: SyncServerStripeAccount[];
+      syncSource: 'stripe';
+      upgradingAccountId?: string;
+    }
+  | {
+      requisitionId?: undefined;
+      externalAccounts: SyncServerPayPalAccount[];
+      syncSource: 'paypal';
+      upgradingAccountId?: string;
     };
 
 export function SelectLinkedAccountsModal({
@@ -254,6 +270,18 @@ export function SelectLinkedAccountsModal({
             externalAccounts: toSort as SyncServerTrueLayerAccount[],
             upgradingAccountId,
           };
+        case 'stripe':
+          return {
+            syncSource: 'stripe',
+            externalAccounts: toSort as SyncServerStripeAccount[],
+            upgradingAccountId,
+          };
+        case 'paypal':
+          return {
+            syncSource: 'paypal',
+            externalAccounts: toSort as SyncServerPayPalAccount[],
+            upgradingAccountId,
+          };
         default:
           throw new Error(`Unrecognized sync source: ${String(syncSource)}`);
       }
@@ -297,6 +325,8 @@ export function SelectLinkedAccountsModal({
   const linkAccountAkahu = useLinkAccountAkahuMutation();
   const linkAccountEnableBanking = useLinkAccountEnableBankingMutation();
   const linkAccountTrueLayer = useLinkAccountTrueLayerMutation();
+  const linkAccountStripe = useLinkAccountStripeMutation();
+  const linkAccountPayPal = useLinkAccountPayPalMutation();
 
   async function onNext() {
     const chosenLocalAccountIds = Object.values(chosenAccounts);
@@ -392,6 +422,36 @@ export function SelectLinkedAccountsModal({
           });
         } else if (propsWithSortedExternalAccounts.syncSource === 'trueLayer') {
           linkAccountTrueLayer.mutate({
+            externalAccount:
+              propsWithSortedExternalAccounts.externalAccounts[
+                externalAccountIndex
+              ],
+            upgradingId:
+              chosenLocalAccountId !== addOnBudgetAccountOption.id &&
+              chosenLocalAccountId !== addOffBudgetAccountOption.id
+                ? chosenLocalAccountId
+                : undefined,
+            offBudget,
+            startingDate,
+            startingBalance,
+          });
+        } else if (propsWithSortedExternalAccounts.syncSource === 'stripe') {
+          linkAccountStripe.mutate({
+            externalAccount:
+              propsWithSortedExternalAccounts.externalAccounts[
+                externalAccountIndex
+              ],
+            upgradingId:
+              chosenLocalAccountId !== addOnBudgetAccountOption.id &&
+              chosenLocalAccountId !== addOffBudgetAccountOption.id
+                ? chosenLocalAccountId
+                : undefined,
+            offBudget,
+            startingDate,
+            startingBalance,
+          });
+        } else if (propsWithSortedExternalAccounts.syncSource === 'paypal') {
+          linkAccountPayPal.mutate({
             externalAccount:
               propsWithSortedExternalAccounts.externalAccounts[
                 externalAccountIndex
@@ -676,7 +736,9 @@ type ExternalAccount =
   | SyncServerPluggyAiAccount
   | SyncServerAkahuAccount
   | SyncServerEnableBankingAccount
-  | SyncServerTrueLayerAccount;
+  | SyncServerTrueLayerAccount
+  | SyncServerStripeAccount
+  | SyncServerPayPalAccount;
 
 type StartingBalanceInfo = {
   date: string;
@@ -938,7 +1000,9 @@ function getInstitutionName(
     | SyncServerSimpleFinAccount
     | SyncServerPluggyAiAccount
     | SyncServerEnableBankingAccount
-    | SyncServerTrueLayerAccount,
+    | SyncServerTrueLayerAccount
+    | SyncServerStripeAccount
+    | SyncServerPayPalAccount,
 ) {
   if (typeof externalAccount?.institution === 'string') {
     return externalAccount?.institution ?? '';

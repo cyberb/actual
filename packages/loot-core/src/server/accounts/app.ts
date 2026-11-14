@@ -35,8 +35,10 @@ import type {
   SyncServerAkahuAccount,
   SyncServerEnableBankingAccount,
   SyncServerGoCardlessAccount,
+  SyncServerPayPalAccount,
   SyncServerPluggyAiAccount,
   SyncServerSimpleFinAccount,
+  SyncServerStripeAccount,
   SyncServerTrueLayerAccount,
   TransactionEntity,
 } from '#types/models';
@@ -64,6 +66,8 @@ export type AccountHandlers = {
   'akahu-accounts-link': typeof linkAkahuAccount;
   'enablebanking-accounts-link': typeof linkEnableBankingAccount;
   'truelayer-accounts-link': typeof linkTrueLayerAccount;
+  'stripe-accounts-link': typeof linkStripeAccount;
+  'paypal-accounts-link': typeof linkPayPalAccount;
   'account-create': typeof createAccount;
   'account-close': typeof closeAccount;
   'account-reopen': typeof reopenAccount;
@@ -88,6 +92,12 @@ export type AccountHandlers = {
   'truelayer-start-auth': typeof trueLayerStartAuth;
   'truelayer-poll-auth': typeof trueLayerPollAuth;
   'truelayer-poll-auth-stop': typeof stopTrueLayerPollAuth;
+  'stripe-status': typeof stripeStatus;
+  'stripe-configure': typeof stripeConfigure;
+  'stripe-accounts': typeof stripeAccounts;
+  'paypal-status': typeof payPalStatus;
+  'paypal-configure': typeof payPalConfigure;
+  'paypal-accounts': typeof payPalAccounts;
   'simplefin-accounts': typeof simpleFinAccounts;
   'pluggyai-accounts': typeof pluggyAiAccounts;
   'akahu-accounts': typeof akahuAccounts;
@@ -484,8 +494,12 @@ async function linkPerAccountBank({
   startingDate,
   startingBalance,
 }: LinkAccountBaseParams & {
-  externalAccount: SyncServerEnableBankingAccount | SyncServerTrueLayerAccount;
-  syncSource: 'enableBanking' | 'trueLayer';
+  externalAccount:
+    | SyncServerEnableBankingAccount
+    | SyncServerTrueLayerAccount
+    | SyncServerStripeAccount
+    | SyncServerPayPalAccount;
+  syncSource: 'enableBanking' | 'trueLayer' | 'stripe' | 'paypal';
 }) {
   let id: string | undefined;
 
@@ -577,6 +591,22 @@ async function linkTrueLayerAccount(
   },
 ) {
   return linkPerAccountBank({ ...params, syncSource: 'trueLayer' });
+}
+
+async function linkStripeAccount(
+  params: LinkAccountBaseParams & {
+    externalAccount: SyncServerStripeAccount;
+  },
+) {
+  return linkPerAccountBank({ ...params, syncSource: 'stripe' });
+}
+
+async function linkPayPalAccount(
+  params: LinkAccountBaseParams & {
+    externalAccount: SyncServerPayPalAccount;
+  },
+) {
+  return linkPerAccountBank({ ...params, syncSource: 'paypal' });
 }
 
 async function createAccount({
@@ -1325,6 +1355,59 @@ async function stopTrueLayerPollAuth({ state }: { state: string }) {
   return 'ok';
 }
 
+async function postPaymentProvider(
+  server: 'STRIPE_SERVER' | 'PAYPAL_SERVER',
+  path: string,
+  body: unknown,
+) {
+  const userToken = await asyncStorage.getItem('user-token');
+
+  if (!userToken) {
+    return { error: 'unauthorized' };
+  }
+
+  const serverConfig = getServer();
+  if (!serverConfig) {
+    throw new Error('Failed to get server config.');
+  }
+
+  return post(
+    serverConfig[server] + path,
+    body,
+    {
+      'X-ACTUAL-TOKEN': userToken,
+    },
+    60000,
+  );
+}
+
+async function stripeStatus() {
+  return postPaymentProvider('STRIPE_SERVER', '/status', {});
+}
+
+async function stripeConfigure(config: { key: string }) {
+  return postPaymentProvider('STRIPE_SERVER', '/configure', config);
+}
+
+async function stripeAccounts() {
+  return postPaymentProvider('STRIPE_SERVER', '/accounts', {});
+}
+
+async function payPalStatus() {
+  return postPaymentProvider('PAYPAL_SERVER', '/status', {});
+}
+
+async function payPalConfigure(config: {
+  clientId: string;
+  clientSecret: string;
+}) {
+  return postPaymentProvider('PAYPAL_SERVER', '/configure', config);
+}
+
+async function payPalAccounts() {
+  return postPaymentProvider('PAYPAL_SERVER', '/accounts', {});
+}
+
 async function getGoCardlessBanks(country: string) {
   const userToken = await asyncStorage.getItem('user-token');
 
@@ -1895,6 +1978,8 @@ app.method('pluggyai-accounts-link', linkPluggyAiAccount);
 app.method('akahu-accounts-link', linkAkahuAccount);
 app.method('enablebanking-accounts-link', linkEnableBankingAccount);
 app.method('truelayer-accounts-link', linkTrueLayerAccount);
+app.method('stripe-accounts-link', linkStripeAccount);
+app.method('paypal-accounts-link', linkPayPalAccount);
 app.method('account-create', mutator(undoable(createAccount)));
 app.method('account-close', mutator(closeAccount));
 app.method('account-reopen', mutator(undoable(reopenAccount)));
@@ -1919,6 +2004,12 @@ app.method('truelayer-configure', trueLayerConfigure);
 app.method('truelayer-start-auth', trueLayerStartAuth);
 app.method('truelayer-poll-auth', trueLayerPollAuth);
 app.method('truelayer-poll-auth-stop', stopTrueLayerPollAuth);
+app.method('stripe-status', stripeStatus);
+app.method('stripe-configure', stripeConfigure);
+app.method('stripe-accounts', stripeAccounts);
+app.method('paypal-status', payPalStatus);
+app.method('paypal-configure', payPalConfigure);
+app.method('paypal-accounts', payPalAccounts);
 app.method('simplefin-accounts', simpleFinAccounts);
 app.method('pluggyai-accounts', pluggyAiAccounts);
 app.method('akahu-accounts', akahuAccounts);

@@ -11,6 +11,8 @@ type ServerConfig = {
   AKAHU_SERVER: string;
   ENABLEBANKING_SERVER: string;
   TRUELAYER_SERVER: string;
+  STRIPE_SERVER: string;
+  PAYPAL_SERVER: string;
 };
 
 let config: ServerConfig | null = null;
@@ -51,6 +53,8 @@ export function getServer(url?: string): ServerConfig | null {
         AKAHU_SERVER: joinURL(url, '/akahu'),
         ENABLEBANKING_SERVER: joinURL(url, '/enablebanking'),
         TRUELAYER_SERVER: joinURL(url, '/truelayer'),
+        STRIPE_SERVER: joinURL(url, '/stripe'),
+        PAYPAL_SERVER: joinURL(url, '/paypal'),
       };
     } catch (error) {
       logger.warn(

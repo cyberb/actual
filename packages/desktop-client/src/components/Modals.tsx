@@ -72,10 +72,12 @@ import { OpenIDEnableModal } from './modals/OpenIDEnableModal';
 import { OutOfSyncMigrationsModal } from './modals/OutOfSyncMigrationsModal';
 import { PasswordEnableModal } from './modals/PasswordEnableModal';
 import { PayeeAutocompleteModal } from './modals/PayeeAutocompleteModal';
+import { PayPalInitialiseModal } from './modals/PayPalInitialiseModal';
 import { PluggyAiInitialiseModal } from './modals/PluggyAiInitialiseModal';
 import { ScheduledTransactionMenuModal } from './modals/ScheduledTransactionMenuModal';
 import { SelectLinkedAccountsModal } from './modals/SelectLinkedAccountsModal';
 import { SimpleFinInitialiseModal } from './modals/SimpleFinInitialiseModal';
+import { StripeInitialiseModal } from './modals/StripeInitialiseModal';
 import { TrackingBalanceMenuModal } from './modals/TrackingBalanceMenuModal';
 import { TrackingBudgetMenuModal } from './modals/TrackingBudgetMenuModal';
 import { TrackingBudgetMonthMenuModal } from './modals/TrackingBudgetMonthMenuModal';
@@ -215,6 +217,12 @@ export function Modals() {
 
         case 'truelayer-external-msg':
           return <TrueLayerExternalMsgModal key={key} {...modal.options} />;
+
+        case 'stripe-init':
+          return <StripeInitialiseModal key={key} {...modal.options} />;
+
+        case 'paypal-init':
+          return <PayPalInitialiseModal key={key} {...modal.options} />;
 
         case 'gocardless-external-msg':
           return (

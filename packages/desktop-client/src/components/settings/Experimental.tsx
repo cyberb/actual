@@ -294,6 +294,16 @@ export function ExperimentalFeatures() {
           <Trans>TrueLayer bank sync (UK banks)</Trans>
         </FeatureToggle>
       )}
+      {isUsingServer && (
+        <FeatureToggle flag="stripeBankSync">
+          <Trans>Stripe balance sync</Trans>
+        </FeatureToggle>
+      )}
+      {isUsingServer && (
+        <FeatureToggle flag="paypalBankSync">
+          <Trans>PayPal balance sync</Trans>
+        </FeatureToggle>
+      )}
       {showServerPrefs && (
         <ServerFeatureToggle
           prefName="flags.plugins"

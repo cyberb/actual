@@ -159,6 +159,18 @@ export type Modal =
       };
     }
   | {
+      name: 'stripe-init';
+      options: {
+        onSuccess: () => void;
+      };
+    }
+  | {
+      name: 'paypal-init';
+      options: {
+        onSuccess: () => void;
+      };
+    }
+  | {
       name: 'truelayer-external-msg';
       options: {
         onMoveExternal: (
