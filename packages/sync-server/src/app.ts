@@ -15,9 +15,11 @@ import * as corsApp from './app-cors-proxy';
 import * as enableBankingApp from './app-enablebanking/app-enablebanking';
 import * as goCardlessApp from './app-gocardless/app-gocardless';
 import * as openidApp from './app-openid';
+import * as payPalApp from './app-paypal/app-paypal';
 import * as pluggai from './app-pluggyai/app-pluggyai';
 import * as secretApp from './app-secrets';
 import * as simpleFinApp from './app-simplefin/app-simplefin';
+import * as stripeApp from './app-stripe/app-stripe';
 import * as syncApp from './app-sync';
 import * as trueLayerApp from './app-truelayer/app-truelayer';
 import { config } from './load-config';
@@ -33,10 +35,7 @@ process.on('unhandledRejection', reason => {
 
 app.disable('x-powered-by');
 app.use(cors());
-app.set(
-  'trust proxy',
-  config.get('socket') ? 1 : config.get('trustedProxies'),
-);
+app.set('trust proxy', config.get('socket') ? 1 : config.get('trustedProxies'));
 if (process.env.NODE_ENV !== 'development') {
   app.use(
     rateLimit({
@@ -72,6 +71,8 @@ app.use('/pluggyai', pluggai.handlers);
 app.use('/akahu', akahuApp.handlers);
 app.use('/enablebanking', enableBankingApp.handlers);
 app.use('/truelayer', trueLayerApp.handlers);
+app.use('/stripe', stripeApp.handlers);
+app.use('/paypal', payPalApp.handlers);
 app.use('/secret', secretApp.handlers);
 
 if (config.get('corsProxy.enabled')) {

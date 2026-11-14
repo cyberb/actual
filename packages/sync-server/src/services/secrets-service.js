@@ -23,6 +23,9 @@ export const SecretName = {
   truelayer_clientSecret: 'truelayer_clientSecret',
   truelayer_connection: 'truelayer_connection',
   truelayer_account: 'truelayer_account',
+  stripe_key: 'stripe_key',
+  paypal_clientId: 'paypal_clientId',
+  paypal_clientSecret: 'paypal_clientSecret',
 };
 
 function getSecretKey(name, fileId) {
